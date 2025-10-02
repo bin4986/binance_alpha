@@ -1,0 +1,23 @@
+name: Alpha Alert
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"  # 15분마다
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install requests python-dotenv beautifulsoup4
+      - name: Run monitor
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          CHECK_INTERVAL_SECONDS: "900"
+        run: |
+          python alpha_alert.py || true
