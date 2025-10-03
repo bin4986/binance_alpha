@@ -6,7 +6,7 @@ CHAT_ID = (os.getenv("TELEGRAM_CHAT_ID") or "").strip()
 
 def send(msg: str):
     if not TOKEN or not CHAT_ID:
-        print("❌ TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID 환경변수 없음")
+        print("❌ env 없음: TELEGRAM_BOT_TOKEN / TELEGRAM_CHAT_ID")
         sys.exit(1)
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     r = requests.post(url, data={"chat_id": CHAT_ID, "text": msg})
