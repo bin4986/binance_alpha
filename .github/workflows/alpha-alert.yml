@@ -1,16 +1,19 @@
 name: Alpha Alert
 
 on:
-  workflow_dispatch:   # 수동 실행 버튼
+  workflow_dispatch:        # 수동 실행
   push:
-    branches: [ main ] # main에 push 시 실행
+    branches: [ main ]      # 원하면 유지, 아니면 이 블록 삭제
 
 jobs:
   run:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
@@ -19,7 +22,34 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests python-dotenv beautifulsoup4 || true
 
-      - name: Run monitor once
+      # 0) 시크릿이 들어오는지 확인(값은 마스킹)
+      - name: Debug env presence
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID:  ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          echo "Has TOKEN? $([ -n "$TELEGRAM_BOT_TOKEN" ] && echo YES || echo NO)"
+          echo "CHAT_ID length: ${#TELEGRAM_CHAT_ID}"
+          # 앞뒤 공백/개행 제거 가이드 (참고용)
+          # echo "$TELEGRAM_BOT_TOKEN" | od -An -t x1
+
+      # 1) curl로 바로 쏴보는 최소 테스트 (여기서 성공해야 토큰/챗ID OK)
+      - name: Sanity send via curl
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID:  ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          set -e
+          TOKEN=$(printf "%s" "$TELEGRAM_BOT_TOKEN" | tr -d '\r\n')
+          CHAT=$(printf "%s" "$TELEGRAM_CHAT_ID" | tr -d '\r\n')
+          MSG="✅ Sanity OK ($(date -u '+%Y-%m-%d %H:%M:%S UTC'))"
+          RESP=$(curl -s -X POST "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+            -d "chat_id=${CHAT}" --data-urlencode "text=${MSG}")
+          echo "::notice title=Telegram API response (curl)::${RESP}"
+          echo "$RESP" | grep -q '"ok":true' || (echo "Telegram send failed"; exit 1)
+
+      # 2) 파이썬 스크립트 실행 (같은 env 주입)
+      - name: Run monitor once (python)
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_ID:  ${{ secrets.TELEGRAM_CHAT_ID }}
