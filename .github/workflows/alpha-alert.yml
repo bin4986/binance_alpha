@@ -1,54 +1,27 @@
-name: Telegram Alerts
+name: Alpha Alert
 
 on:
-  # 수동 실행
-  workflow_dispatch:
-  # 푸시할 때 테스트(원하면 지워도 됨)
+  workflow_dispatch:   # 수동 실행 버튼
   push:
-    branches: [ main ]
-  # 매 10분마다 실행(원하면 주석 처리)
-  schedule:
-    - cron: "*/10 * * * *"
+    branches: [ main ] # main에 push 시 실행
 
 jobs:
-  # 0. 간단 테스트: 텔레그램으로 "Actions 연결 OK" 보내기
-  ping:
+  run:
     runs-on: ubuntu-latest
     steps:
-      - name: Send ping message to Telegram
-        env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: |
-          MSG="✅ GitHub Actions 연결 OK ($(date -u '+%Y-%m-%d %H:%M:%S UTC'))"
-          curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage" \
-            -d "chat_id=${TELEGRAM_CHAT_ID}" \
-            --data-urlencode "text=${MSG}"
-
-  # 1. 파이썬 스크립트(예: alpha_alert.py) 실행해서 결과를 텔레그램으로 전송
-  run-alpha:
-    runs-on: ubuntu-latest
-    needs: ping
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
-      - name: Install deps
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt || true
-          # 최소 의존성(요청 전송)
-          pip install requests || true
+          pip install requests python-dotenv beautifulsoup4 || true
 
-      - name: Run alpha alert script
+      - name: Run monitor once
         env:
-          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
-          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          # 필요하면 추가 환경변수도 여기서 주입
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID:  ${{ secrets.TELEGRAM_CHAT_ID }}
         run: |
           python alpha_alert.py
