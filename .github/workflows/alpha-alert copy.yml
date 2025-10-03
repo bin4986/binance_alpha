@@ -1,0 +1,41 @@
+name: Alpha Alert
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # 15분마다 (UTC 기준)
+  workflow_dispatch:         # 수동 실행 버튼
+
+permissions:
+  contents: write            # seen 파일을 repo에 커밋해 영구 저장
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - run: pip install requests python-dotenv beautifulsoup4
+
+      # 1회 실행(ONCE=1)로 감지만 하고 종료
+      - name: Run monitor once
+        env:
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          ONCE: "1"
+        run: |
+          python alpha_alert.py
+
+      # seen_alpha_ids.json 변경분을 repo에 커밋해서 다음 실행에도 중복 알림 방지
+      - name: Persist seen IDs
+        run: |
+          if [ -f seen_alpha_ids.json ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add seen_alpha_ids.json
+            git commit -m "chore: update seen ids [skip ci]" || echo "No changes"
+            git push
+          fi
