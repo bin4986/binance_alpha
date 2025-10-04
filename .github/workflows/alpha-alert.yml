@@ -3,12 +3,11 @@ name: Binance Alpha Alert
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "*/5 * * * *"   # 5분마다
   push:
     branches: [ main ]
     paths:
       - "alpha_alert.py"
-      - "requirements.txt"
       - ".github/workflows/alpha-alert.yml"
 
 concurrency:
@@ -33,37 +32,23 @@ jobs:
       - name: Install deps
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-
-      # 디버그: 실제 실행 파일 내용 확인
-      - name: Show alpha_alert.py head
-        run: |
-          echo "HEAD commit: $(git rev-parse HEAD)"
-          sed -n '1,120p' alpha_alert.py
-          echo "---- grep requests.get (should be empty) ----"
-          grep -n "requests.get" -n alpha_alert.py || true
-          echo "---- grep post_json usages ----"
-          grep -n "post_json" -n alpha_alert.py || true
+          pip install requests
 
       - name: Run alpha_alert
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          CMS_LIST_API: https://www.binance.com/bapi/apex/v1/public/apex/cms/article/list/query
-          CMS_DETAIL_API: https://www.binance.com/bapi/apex/v1/public/apex/cms/article/detail/query
-          PAGES: "1"
+          # 새 글이 없어도 '없으면 없음!' 보내기 (원치 않으면 0)
+          ALWAYS_NOTIFY_NO_RESULT: "1"
+          NO_RESULT_MESSAGE: "없으면 없음! ✅ (새 상장 알림 없음)"
         run: |
           python alpha_alert.py
 
-      - name: Persist seen_ids.json
+      - name: Persist local state
         if: always()
         run: |
-          if [ -f seen_ids.json ]; then
-            git config user.name  "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add seen_ids.json
-            git commit -m "chore: update seen_ids.json [skip ci]" || true
-            git push || true
-          else
-            echo "seen_ids.json not found; nothing to commit."
-          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add seen_ids.json .alpha_alert_initialized || true
+          git commit -m "chore: update state [skip ci]" || true
+          git push || true
