@@ -1,11 +1,11 @@
 name: Binance Alpha Alert
 
 on:
-  workflow_dispatch:          # 수동 실행 버튼
-  schedule:                   # 주기 실행(예: 5분마다)
+  workflow_dispatch:
+  schedule:
     - cron: "*/5 * * * *"
-  push:                       # 코드 푸시 시 자동 실행
-    branches: [ main ]        # ← 네 기본 브랜치명에 맞춰 수정
+  push:
+    branches: [ main ]
     paths:
       - "alpha_alert.py"
       - "requirements.txt"
@@ -19,7 +19,7 @@ jobs:
   run:
     runs-on: ubuntu-latest
     permissions:
-      contents: write     # seen_ids.json 커밋용
+      contents: write
 
     steps:
       - name: Checkout
@@ -35,22 +35,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      # 디버그: 액션이 실제로 어떤 파일을 실행하는지 확인
       - name: Show alpha_alert.py head
         run: |
           echo "HEAD commit: $(git rev-parse HEAD)"
-          echo "=== first 60 lines of alpha_alert.py ==="
-          sed -n '1,60p' alpha_alert.py
-          echo "=== grep CMS_LIST_API ==="
-          grep -n "CMS_LIST_API" alpha_alert.py || true
+          sed -n '1,80p' alpha_alert.py
+          echo "---- grep endpoints ----"
+          grep -n "CMS_.*_API" alpha_alert.py || true
 
       - name: Run alpha_alert
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          # 안전장치: 환경변수로 신 CMS 엔드포인트 강제
+          # 필요 시 엔드포인트를 환경변수로 강제 오버라이드 가능
           CMS_LIST_API: https://www.binance.com/bapi/apex/v1/public/apex/cms/article/list/query
-          # 필요시 페이지 수 조절
+          CMS_DETAIL_API: https://www.binance.com/bapi/apex/v1/public/apex/cms/article/detail/query
           PAGES: "1"
         run: |
           python alpha_alert.py
