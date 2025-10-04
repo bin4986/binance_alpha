@@ -3,7 +3,7 @@ name: Binance Alpha Alert
 on:
   workflow_dispatch:
   schedule:
-    - cron: "*/5 * * * *"   # 5분마다
+    - cron: "*/5 * * * *"
   push:
     branches: [ main ]
 
@@ -18,11 +18,9 @@ jobs:
       contents: write
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
@@ -31,13 +29,24 @@ jobs:
           python -m pip install --upgrade pip
           pip install requests
 
+      # (선택) 즉석 송신 테스트 — 필요시 주석 해제
+      # - name: Telegram direct test
+      #   env:
+      #     TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN || secrets.TELEGRAM_TOKEN }}
+      #     TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      #   run: |
+      #     curl -s -X POST "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+      #       -d "chat_id=${TELEGRAM_CHAT_ID}" \
+      #       -d "text=✅ Direct test $(date -u +%F\ %T) UTC"
+
       - name: Run alpha_alert
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}          # 이름이 다른 저장소도 커버
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          # 새 글이 없어도 '없으면 없음!' 보내기 (원치 않으면 0)
           ALWAYS_NOTIFY_NO_RESULT: "1"
           NO_RESULT_MESSAGE: "없으면 없음! ✅ (새 상장 알림 없음)"
+          FORCE_INIT: "1"                                        # ← 이번 실행만 강제 초기 알림
         run: |
           python alpha_alert.py
 
