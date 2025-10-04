@@ -35,18 +35,20 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      # 디버그: 실제 실행 파일 내용 확인
       - name: Show alpha_alert.py head
         run: |
           echo "HEAD commit: $(git rev-parse HEAD)"
-          sed -n '1,80p' alpha_alert.py
-          echo "---- grep endpoints ----"
-          grep -n "CMS_.*_API" alpha_alert.py || true
+          sed -n '1,120p' alpha_alert.py
+          echo "---- grep requests.get (should be empty) ----"
+          grep -n "requests.get" -n alpha_alert.py || true
+          echo "---- grep post_json usages ----"
+          grep -n "post_json" -n alpha_alert.py || true
 
       - name: Run alpha_alert
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          # 필요 시 엔드포인트를 환경변수로 강제 오버라이드 가능
           CMS_LIST_API: https://www.binance.com/bapi/apex/v1/public/apex/cms/article/list/query
           CMS_DETAIL_API: https://www.binance.com/bapi/apex/v1/public/apex/cms/article/detail/query
           PAGES: "1"
