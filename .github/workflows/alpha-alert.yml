@@ -1,15 +1,26 @@
 name: Binance Alpha Alert
 
 on:
-  workflow_dispatch:
-  schedule:
-    - cron: "*/5 * * * *"   # 5분마다
+  workflow_dispatch:          # 수동 실행 버튼
+  schedule:                   # 주기 실행(예: 5분마다)
+    - cron: "*/5 * * * *"
+  push:                       # 코드 푸시 시 자동 실행
+    branches: [ main ]        # ← 네 기본 브랜치명에 맞춰 수정
+    paths:
+      - "alpha_alert.py"
+      - "requirements.txt"
+      - ".github/workflows/alpha-alert.yml"
+
+concurrency:
+  group: alpha-alert-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   run:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: write     # seen_ids.json 커밋용
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -24,11 +35,22 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      # 디버그: 액션이 실제로 어떤 파일을 실행하는지 확인
+      - name: Show alpha_alert.py head
+        run: |
+          echo "HEAD commit: $(git rev-parse HEAD)"
+          echo "=== first 60 lines of alpha_alert.py ==="
+          sed -n '1,60p' alpha_alert.py
+          echo "=== grep CMS_LIST_API ==="
+          grep -n "CMS_LIST_API" alpha_alert.py || true
+
       - name: Run alpha_alert
         env:
           TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-          # 옵션: 페이지 더 보려면 조정(1~2면 충분)
+          # 안전장치: 환경변수로 신 CMS 엔드포인트 강제
+          CMS_LIST_API: https://www.binance.com/bapi/apex/v1/public/apex/cms/article/list/query
+          # 필요시 페이지 수 조절
           PAGES: "1"
         run: |
           python alpha_alert.py
@@ -36,8 +58,12 @@ jobs:
       - name: Persist seen_ids.json
         if: always()
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add seen_ids.json || true
-          git commit -m "chore: update seen_ids.json [skip ci]" || true
-          git push || true
+          if [ -f seen_ids.json ]; then
+            git config user.name  "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add seen_ids.json
+            git commit -m "chore: update seen_ids.json [skip ci]" || true
+            git push || true
+          else
+            echo "seen_ids.json not found; nothing to commit."
+          fi
