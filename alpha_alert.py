@@ -205,29 +205,34 @@ def process_once() -> int:
         try:
             send_telegram("✅ alpha_alert.py 초기 연결 성공! (GitHub Actions ↔ Telegram OK)")
             INIT_FLAG.write_text("ok", encoding="utf-8")
+            print("[info] initial connect message sent")
         except Exception as e:
             print(f"[warn] initial connect notify failed: {e}")
 
     articles = scrape_alpha_feed()
     for a in articles:
         aid = a["id"]
-        if aid in seen: 
+        if aid in seen:
             continue
         content = scrape_alpha_detail(aid)
         refs = extract_refs(content)
         msg = format_message(a, refs)
         try:
             send_telegram(msg)
-            seen.add(aid); sent += 1
+            seen.add(aid)
+            sent += 1
+            print(f"[info] sent listing id={aid} title={a.get('title','')[:60]}")
         except Exception as e:
             print(f"[error] telegram send failed for {aid}: {e}")
 
     save_seen(seen)
 
-    # 새 글이 하나도 없으면 '없으면 없음!' 전송 (기본 on)
+    # 새 글이 없으면 '없으면 없음!' 전송 (기본 on)
     if sent == 0 and ALWAYS_NOTIFY_NO_RESULT:
         try:
-            send_telegram(NO_RESULT_MESSAGE)
+            ts = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime())
+            send_telegram(f"{NO_RESULT_MESSAGE} • {ts}")
+            print("[info] no-result heartbeat sent")
         except Exception as e:
             print(f"[warn] no-result notify failed: {e}")
 
@@ -236,6 +241,3 @@ def process_once() -> int:
 def main():
     sent = process_once()
     print(f"done. sent={sent}")
-
-if __name__ == "__main__":
-    main()
