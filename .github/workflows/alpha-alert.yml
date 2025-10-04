@@ -6,9 +6,6 @@ on:
     - cron: "*/5 * * * *"   # 5분마다
   push:
     branches: [ main ]
-    paths:
-      - "alpha_alert.py"
-      - ".github/workflows/alpha-alert.yml"
 
 concurrency:
   group: alpha-alert-${{ github.ref }}
