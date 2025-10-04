@@ -46,8 +46,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           ALWAYS_NOTIFY_NO_RESULT: "1"
           NO_RESULT_MESSAGE: "없으면 없음! ✅ (새 상장 알림 없음)"
-          FORCE_INIT: "1"                                        # ← 이번 실행만 강제 초기 알림
-        run: |
+          run: |
           python alpha_alert.py
 
       - name: Persist local state

@@ -3,6 +3,7 @@
 
 import os, re, json, time
 from pathlib import Path
+INIT_FLAG = Path(".alpha_alert_initialized")
 from typing import Dict, List, Any, Optional
 import requests
 
@@ -158,15 +159,11 @@ def format_message(a: Dict[str, Any], refs: Dict[str, List[str]]) -> str:
     return "\n".join(lines)
 
 def process_once() -> int:
-    # env 확인(마스킹)
-    tok_mask = (TG_TOKEN[:8] + "...") if TG_TOKEN else "<empty>"
-    print(f"[debug] CHAT_ID={TG_CHAT_ID} TOKEN={tok_mask}")
-
     seen = load_seen()
     sent = 0
 
-    # 초기 알림: 강제/1회
-    if FORCE_INIT or not INIT_FLAG.exists():
+    # ✅ 최초 1회만 초기 알림 전송 (강제 옵션 제거)
+    if not INIT_FLAG.exists():
         try:
             send_telegram("✅ alpha_alert.py 초기 연결 성공! (GitHub Actions ↔ Telegram OK)")
             INIT_FLAG.write_text("ok", encoding="utf-8")
